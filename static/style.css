@@ -28,11 +28,14 @@ html, body {
     background: var(--bg-main);
     color: var(--text-main);
     overflow-x: hidden;
-    overscroll-behavior-y: contain;
+    /* Wichtig: Erlaubt normales vertikales Scrollen auf Mobilgeräten */
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch;
 }
 
+/* Nur wenn die Klasse noScroll explizit gesetzt ist (z.B. im Splash oder Login), wird das Scrollen blockiert */
 body.noScroll { 
-    overflow: hidden; 
+    overflow: hidden !important; 
     height: 100vh; 
     height: 100dvh; 
 }
@@ -41,7 +44,7 @@ body.noScroll main {
 }
 
 /* ==========================================
-   CLEAN SCREEN & SWIPE ANIMATION (Dezent & Sauber)
+   CLEAN SCREEN & SWIPE ANIMATION
    ========================================== */
 .screen { 
     display: none; 
@@ -120,7 +123,7 @@ main {
 }
 
 /* ==========================================
-   BUTTONS & INPUTS (Ohne farbige Schatten - Clean)
+   BUTTONS & INPUTS (Clean)
    ========================================== */
 button {
     display: block;
@@ -310,7 +313,7 @@ video, img {
 }
 
 /* ==========================================
-   CLEANE ROSA BOTTOM NAVI BAR (Ohne bunte Schatten)
+   CLEANE ROSA BOTTOM NAVI BAR
    ========================================== */
 .bottombar {
     position: fixed;
