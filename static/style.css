@@ -1,0 +1,554 @@
+/* ==========================================
+   RESET & MOBILE BASE
+   ========================================== */
+* {
+    box-sizing: border-box;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --border-color: #334155;
+    --poke-yellow: #ffcb05;
+    --poke-blue: #3b82f6;
+    --poke-red: #ef4444;
+    --poke-pink: #ec4899;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--bg-main);
+    color: var(--text-main);
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+}
+
+body.noScroll { 
+    overflow: hidden; 
+    height: 100vh; 
+    height: 100dvh; 
+}
+body.noScroll main { 
+    overflow: hidden; 
+}
+
+/* ==========================================
+   CLEAN SCREEN & SWIPE ANIMATION (Dezent & Sauber)
+   ========================================== */
+.screen { 
+    display: none; 
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.screen.active { 
+    display: block; 
+    opacity: 1;
+    transform: translateY(0);
+    animation: fadeInClean 0.25s ease forwards;
+}
+
+@keyframes fadeInClean {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================
+   HEADER & LAYOUT (Clean & Modern)
+   ========================================== */
+header {
+    padding: 12px 16px;
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+}
+
+#backBtn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    margin: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+#backBtn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.18); }
+
+header h1 {
+    font-size: 18px;
+    margin: 0;
+    color: var(--poke-yellow);
+    flex: 1;
+    text-shadow: 0 2px 8px rgba(255, 203, 5, 0.25);
+}
+
+main {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px 16px calc(95px + env(safe-area-inset-bottom)) 16px;
+}
+
+/* ==========================================
+   BUTTONS & INPUTS (Ohne farbige Schatten - Clean)
+   ========================================== */
+button {
+    display: block;
+    width: 100%;
+    margin: 10px 0;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--poke-yellow) 0%, #f59e0b 100%);
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.1s ease, filter 0.1s ease;
+}
+button:active { transform: scale(0.98); filter: brightness(0.92); }
+button.secondary { background: linear-gradient(135deg, var(--poke-blue) 0%, #1d4ed8 100%); color: #fff; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+button.danger { background: linear-gradient(135deg, var(--poke-red) 0%, #b91c1c 100%); color: #fff; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+
+input, select {
+    width: 100%;
+    margin: 6px 0;
+    padding: 13px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--text-main);
+    font-size: 16px;
+    backdrop-filter: blur(8px);
+}
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--poke-pink);
+    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15);
+}
+
+/* ==========================================
+   CARDS & GRIDS
+   ========================================== */
+.card {
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.92) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 18px;
+    margin: 12px 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+}
+
+.row { 
+    display: flex; 
+    gap: 10px; 
+    width: 100%;
+    align-items: center;
+}
+.row > * { flex: 1; min-width: 0; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+video, img {
+    width: 100%;
+    max-height: 280px;
+    object-fit: cover;
+    border-radius: 14px;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hpbar {
+    height: 10px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+.hpbar > i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    width: 100%;
+    transition: width 0.3s ease;
+}
+
+.log {
+    height: 140px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.small { font-size: 13px; color: var(--text-muted); }
+
+.tag {
+    display: inline-block;
+    background: rgba(236, 72, 153, 0.12);
+    color: #f472b6;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 700;
+    margin: 2px 4px 2px 0;
+    border: 1px solid rgba(236, 72, 153, 0.25);
+}
+
+/* ==========================================
+   PERFEKTE POKÉBALLS & ARENA
+   ========================================== */
+.arena {
+    position: relative;
+    height: 220px;
+    border-radius: 20px;
+    margin: 12px 0 16px 0;
+    overflow: hidden;
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    background: linear-gradient(180deg, #38bdf8 0% 50%, #b45309 50% 100%);
+    box-shadow: inset 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+.arena .table {
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    transform: translate(-50%, -50%);
+    width: 75%;
+    height: 38%;
+    background: linear-gradient(180deg, #92400e, #78350f);
+    border-radius: 14px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+    border: 2px solid #b45309;
+}
+
+.arena .pokeball {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #0f172a;
+    background: linear-gradient(180deg, #ef4444 0 48%, #ffffff 52% 100%);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.45), inset -5px -5px 10px rgba(0,0,0,0.35);
+}
+.arena .pokeball::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 5px;
+    transform: translateY(-50%);
+    background: #0f172a;
+    z-index: 2;
+}
+.arena .pokeball::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 17px;
+    height: 17px;
+    background: radial-gradient(circle, #ffffff 30%, #e2e8f0 70%, #94a3b8 100%);
+    border: 3px solid #0f172a;
+    border-radius: 50%;
+    z-index: 3;
+}
+
+.arena .btnfight {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    width: auto;
+    min-width: 160px;
+    padding: 12px 24px;
+    margin: 0;
+    font-size: 16px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+}
+
+/* ==========================================
+   CLEANE ROSA BOTTOM NAVI BAR (Ohne bunte Schatten)
+   ========================================== */
+.bottombar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom)) 12px;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(236, 72, 153, 0.2);
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.4);
+}
+
+.bottombar button {
+    margin: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fbcfe8;
+    background: rgba(236, 72, 153, 0.06);
+    border: 1px solid rgba(236, 72, 153, 0.15);
+    border-radius: 12px;
+    padding: 8px 4px;
+    box-shadow: none;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.bottombar button:active { 
+    transform: translateY(1px) scale(0.96); 
+    background: rgba(236, 72, 153, 0.15);
+    border-color: rgba(236, 72, 153, 0.4);
+}
+
+.cardicon, .camicon, .friendicon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1.5px solid var(--poke-pink);
+}
+.cardicon { width: 26px; height: 32px; position: relative; }
+.camicon, .friendicon { width: 28px; height: 28px; font-size: 14px; }
+.friendicon { border-radius: 50%; }
+
+.cardicon .mini {
+    position: absolute;
+    left: 50%;
+    top: -5px;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid var(--bg-main);
+    background: linear-gradient(180deg, var(--poke-red) 50%, #ffffff 50%);
+    overflow: hidden;
+}
+.cardicon .mini::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--bg-main);
+    transform: translateY(-50%);
+}
+
+/* ==========================================
+   EPISCHER LADEBILDSCHIRM (SPLASH SCREEN)
+   ========================================== */
+#splash {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 24px;
+    text-align: center;
+    background: radial-gradient(circle at 50% 30%, rgba(236, 72, 153, 0.15), transparent 60%),
+                linear-gradient(135deg, #090d16 0%, #1e1b4b 50%, #0f172a 100%);
+}
+
+#splash .sun {
+    position: absolute;
+    top: 10%;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.3) 0%, rgba(255, 203, 5, 0.1) 60%, transparent 100%);
+    box-shadow: 0 0 60px 20px rgba(236, 72, 153, 0.15);
+    z-index: 1;
+    animation: pulseSun 3s ease-in-out infinite;
+}
+@keyframes pulseSun {
+    0%, 100% { transform: scale(0.9); opacity: 0.7; }
+    50% { transform: scale(1.06); opacity: 0.9; }
+}
+
+#pokeRow {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 12px;
+    width: 100%;
+    max-width: 400px;
+    height: 200px;
+}
+.poke {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    animation: floatPoke 4s ease-in-out infinite;
+}
+.poke:nth-child(2) { animation-delay: -1.3s; }
+.poke:nth-child(3) { animation-delay: -2.6s; }
+
+@keyframes floatPoke {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+}
+
+.poke img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.55));
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+.poke img.on { opacity: 1; }
+.poke:nth-child(1) { width: 32%; }
+.poke:nth-child(2) { width: 40%; transform: translateY(-12px); }
+.poke:nth-child(3) { width: 32%; }
+
+#title {
+    position: relative;
+    z-index: 2;
+    font-size: 34px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    margin: 0;
+    color: #ffcb05;
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+    background: linear-gradient(180deg, #ffffff 0%, #ffcb05 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+#loadText {
+    position: relative;
+    z-index: 3;
+    margin: 0;
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.bar {
+    position: relative;
+    z-index: 3;
+    width: min(85vw, 290px);
+    height: 12px;
+    border-radius: 99px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+}
+.bar > i {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #ef4444, #ffcb05, #3b82f6);
+    transition: width .25s linear;
+}
+
+#ball {
+    position: relative;
+    z-index: 3;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #0f172a;
+    background: linear-gradient(180deg, #ef4444 0 48%, #ffffff 52% 100%);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.55), inset -5px -5px 12px rgba(0,0,0,0.35);
+    animation: spinPokeball 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+#ball::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 5px;
+    transform: translateY(-50%);
+    background: #0f172a;
+    z-index: 2;
+}
+#ball::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 18px;
+    height: 18px;
+    background: radial-gradient(circle, #ffffff 30%, #e2e8f0 70%, #94a3b8 100%);
+    border: 3.5px solid #0f172a;
+    border-radius: 50%;
+    z-index: 3;
+}
+
+@keyframes spinPokeball {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(180deg) scale(1.08); }
+    100% { transform: rotate(360deg); }
+}
+
+#ball .top, #ball .band, #ball .btn, #ball .shine {
+    display: none;
+}

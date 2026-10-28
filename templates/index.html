@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>PokeScan Arena</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <!-- Tesseract.js für automatische OCR-Texterkennung über die Kamera -->
+  <script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
+  
+  <!-- Firebase SDKs per CDN -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  
+  <script>
+    // Firebase Konfiguration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAgj_JnsNZRJOwpehlOHWfMX1cAVZdVr0Y",
+      authDomain: "pokemon-3fa48.firebaseapp.com",
+      projectId: "pokemon-3fa48",
+      storageBucket: "pokemon-3fa48.firebasestorage.app",
+      messagingSenderId: "513951686231",
+      appId: "1:513951686231:web:3760c39343e75972740d12",
+      measurementId: "G-GBEY5ERF2L"
+    };
+
+    // Firebase initialisieren
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+  </script>
+
+  <!-- Styles für Login, Profil-Auswahl, Freundesliste & UI -->
+  <style>
+    body.noScroll { overflow: hidden; height: 100dvh; }
+    body.noScroll main { overflow: hidden; }
+    
+    .screen { display: none; }
+    .screen.active { display: block; }
+    
+    /* Login Screen & Overlay Styling */
+    #login { display: none; position: fixed; inset: 0; z-index: 90; background: #12131a; padding: 20px; margin: 0; align-items: center; justify-content: center; }
+    #login.active { display: flex; }
+    .loginCard { box-sizing: border-box; width: min(380px, 100%); padding: 24px; border: 1px solid #393c50; border-radius: 16px; display: grid; gap: 14px; background: #202332; color: #eef1f7; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+    .loginCard h2 { margin-top: 0; color: #ffcb05; font-size: 22px; }
+    .loginCard button { background: #252938; color: #eef1f7; border: 1px solid #595269; padding: 12px; font-size: 15px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+    .loginCard button:hover { background: #343849; border-color: #7d7593; }
+    .loginCard .btn-google { background: #ffffff; color: #1f1f1f; border: 1px solid #ddd; }
+    .loginCard .btn-google:hover { background: #f1f1f1; }
+    .loginCard .guestLink { color: #ffcb05; border: 0; background: none; cursor: pointer; text-decoration: underline; font-size: 14px; margin-top: 6px; }
+    .googleG { font-weight: 800; background: conic-gradient(#4285f4, #34a853, #fbbc05, #ea4335, #4285f4); -webkit-background-clip: text; background-clip: text; color: transparent; margin-right: 6px; }
+
+    /* Modal Form für Email-Login & Verifizierung */
+    .modal-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-card { background: #202332; border: 1px solid #393c50; border-radius: 16px; width: min(360px, 100%); padding: 20px; color: #eef1f7; display: flex; flex-direction: column; gap: 12px; }
+    .modal-card input { padding: 10px 12px; background: #12131a; color: white; border: 1px solid #595269; border-radius: 8px; font-size: 14px; width: 100%; box-sizing: border-box; }
+    .modal-card .btn-primary { background: #ffcb05; color: #12141d; font-weight: bold; border: none; padding: 10px; border-radius: 8px; cursor: pointer; }
+    .modal-card .btn-cancel { background: transparent; color: #a9aeb9; border: none; cursor: pointer; text-decoration: underline; }
+
+    /* Avatar & Profil */
+    .avatar { display: grid; place-items: center; background: #343849; border: 2px solid #9196a6; border-radius: 10px; width: 46px; height: 46px; padding: 0; overflow: hidden; cursor: pointer; }
+    .avatar svg { width: 75%; height: 75%; fill: #a9aeb9; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar.big { width: 104px; height: 104px; flex-shrink: 0; }
+
+    .box { padding: 14px; background: #202332; border: 1px solid #393c50; border-radius: 16px; margin: 10px 0; }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .fields { min-width: 0; flex: 1; }
+    .id { font-size: 12px; color: #b7adc8; overflow-wrap: anywhere; margin-top: 8px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+    .tabs button { flex: 1; background: transparent; border: none; color: #c8ccd6; padding: 6px; cursor: pointer; font-weight: bold; }
+    .tabs .selected { background: #c691e7; color: #301543; border-radius: 8px; }
+    
+    #custom { min-height: 190px; }
+    .choices { display: flex; gap: 12px; flex-wrap: wrap; }
+    .choices button { width: 66px; height: 66px; font-size: 26px; border-radius: 12px; background: #252938; cursor: pointer; }
+    
+    .pokemonGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-height: 200px; overflow-y: auto; }
+    .pokemonGrid button { width: 100%; height: auto; aspect-ratio: 1; padding: 4px; background: #1b1f27; border-radius: 8px; border: 1px solid #393c50; cursor: pointer; }
+    .pokemonGrid img { width: 100%; height: 100%; object-fit: contain; }
+
+    /* Freundesliste UI (Optimiert: ID voll sichtbar, kompakteres Suchfeld) */
+    .friendSearch { display: flex; gap: 6px; margin-bottom: 12px; align-items: center; }
+    .friendSearch input { min-width: 0; flex: 1; padding: 8px 12px; background: #252938; color: white; border: 1px solid #595269; border-radius: 10px; font-size: 14px; }
+    .friendSearch button { width: auto; padding: 8px 16px; margin: 0; font-size: 14px; border-radius: 10px; }
+    
+    #friendList { flex: 1; position: relative; padding-top: 4px; min-height: 150px; }
+    .emptyFriends { position: absolute; inset: 0; display: grid; place-items: center; color: #a9aeb9; }
+    
+    .friendItem { position: relative; display: flex; align-items: center; gap: 10px; background: #1b1f27; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid #393c50; }
+    .friendAvatar { width: 40px; height: 40px; border-radius: 50%; background: #3a4152; display: grid; place-items: center; overflow: hidden; flex-shrink: 0; }
+    .friendAvatar img { width: 100%; height: 100%; object-fit: cover; }
+    
+    .friendInfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .friendInfo strong { font-size: 14px; color: #eef1f7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .friendInfo small { font-size: 11px; color: #b7adc8; word-break: break-all; overflow-wrap: anywhere; line-height: 1.2; display: block; }
+    
+    .dots { background: none; border: 0; color: #c8ccd6; padding: 4px; font-size: 22px; cursor: pointer; width: auto; }
+    .friendMenu { position: relative; display: flex; align-items: center; }
+    .menuPopup { position: absolute; right: 0; top: 32px; z-index: 20; background: #252938; border: 1px solid #595269; border-radius: 10px; min-width: 170px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .menuPopup button { display: block; width: 100%; background: none; border: 0; text-align: left; color: #eef1f7; font-size: 14px; padding: 10px 12px; cursor: pointer; margin: 0; }
+    .menuPopup button:hover { background: #343849; }
+    .menuPopup[hidden] { display: none; }
+
+    .deleteOverlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
+    .deleteCard { box-sizing: border-box; background: #202332; color: #eef1f7; border: 1px solid #393c50; border-radius: 18px; width: min(340px, 100%); padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
+    .deleteCard .friendAvatar { width: 76px; height: 76px; color: white; }
+    .deleteCard strong { font-size: 20px; text-align: center; overflow-wrap: anywhere; }
+    .deleteCard button { width: 100%; background: transparent; border: 0; padding: 12px; cursor: pointer; font-weight: bold; }
+    .deleteCard .confirmDelete { color: #ff3333; }
+    .deleteCard .cancelDelete { color: #a9aeb9; }
+  </style>
+</head>
+<body>
+
+  <!-- Splash Screen -->
+  <div id="splash">
+    <div class="sun"></div>
+    <div id="pokeRow">
+      <div class="poke"><img class="on" src="https://d2u1z1lopyfwlx.cloudfront.net/thumbnails/dd702a3c-342d-5c25-99d1-dad8ea7ec67a/4ed0c695-8a2a-5f2b-a5c9-5c3fbbcda4f9.jpg" alt="Pikachu"></div>
+      <div class="poke"><img class="on" src="https://d2u1z1lopyfwlx.cloudfront.net/thumbnails/d81ed43a-0fe7-5efb-945d-011561d5c6f3/df867a79-038d-5002-8374-0b19090463f9.jpg" alt="Starter"></div>
+      <div class="poke"><img class="on" src="https://d2u1z1lopyfwlx.cloudfront.net/thumbnails/d16fac93-19b2-5f03-8847-da5201d61730/4ed0c695-8a2a-5f2b-a5c9-5c3fbbcda4f9.jpg" alt="Evoli"></div>
+    </div>
+    <h1 id="title">PokeFight</h1>
+    <div class="bar"><i id="fill"></i></div>
+    <p id="loadText">Lade Inhalte … 0 %</p>
+    <div id="ball">
+      <div class="top"></div>
+      <div class="band"></div>
+      <div class="btn"></div>
+      <div class="shine"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <button id="backBtn" onclick="go('home')" aria-label="Zurück zur Startseite">←</button>
+    <h1>PokeFight</h1>
+    <button class="avatar" id="profileIcon" aria-label="Profil öffnen" onclick="go('profile')"></button>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Login Screen -->
+    <section id="login" class="screen page active">
+      <div class="loginCard">
+        <h2>Willkommen in der Arena!</h2>
+        <p style="font-size: 13px; color: #a9aeb9; margin-top: -8px;">Melde dich an, um deine Karten & Fortschritte zu speichern.</p>
+        <button class="btn-google" onclick="loginWithGoogle()"><span class="googleG">G</span> Mit Google anmelden</button>
+        <button onclick="openEmailModal()">Mit E-Mail anmelden</button>
+        <button class="guestLink" onclick="playAsGuest()">Als Gast fortfahren</button>
+      </div>
+    </section>
+
+    <!-- Email Login/Register Modal -->
+    <div id="emailModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <h3 id="emailModalTitle" style="margin: 0; color: #ffcb05;">Mit E-Mail anmelden</h3>
+        <input type="email" id="emailInput" placeholder="E-Mail-Adresse">
+        <input type="password" id="passwordInput" placeholder="Passwort (min. 6 Zeichen)">
+        <p id="authError" style="color: #ffcb05; font-size: 13px; margin: 0; display: none; line-height: 1.3;"></p>
+        <button class="btn-primary" id="emailAuthBtn" onclick="handleEmailAuth()">Anmelden</button>
+        <button class="btn-cancel" id="toggleAuthModeBtn" onclick="toggleAuthMode()">Kein Konto? Jetzt registrieren</button>
+        <button class="btn-cancel" onclick="closeEmailModal()">Abbrechen</button>
+      </div>
+    </div>
+
+    <!-- Verifizierungs Modal (Nach Registrierung) -->
+    <div id="verifyModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card" style="text-align: center;">
+        <h3 style="margin: 0; color: #ffcb05;">✉️ E-Mail verifizieren</h3>
+        <p style="font-size: 13px; color: #a9aeb9; margin: 8px 0;">Wir haben dir einen Verifizierungs-Link per E-Mail geschickt. Bitte klicke auf den Link in deiner E-Mail, um dein Konto zu aktivieren.</p>
+        <p id="verifyStatus" style="color: #8fdf72; font-size: 12px; margin: 0; display: none;"></p>
+        <button class="btn-primary" onclick="checkEmailVerified()">Ich habe die E-Mail bestätigt</button>
+        <button class="btn-cancel" onclick="resendVerificationEmail()">E-Mail erneut senden</button>
+        <button class="btn-cancel" onclick="closeVerifyModal()">Abbrechen / Abmelden</button>
+      </div>
+    </div>
+
+    <!-- Home Screen -->
+    <section id="home" class="screen page">
+      <div class="arena">
+        <div class="table"></div>
+        <div class="pokeball">
+          <div class="top"></div>
+          <div class="band"></div>
+          <div class="btn"></div>
+        </div>
+        <button class="btnfight" onclick="go('battle')">Kampf starten</button>
+      </div>
+      <div class="card">
+        <h2 id="welcomeHeader">Willkommen, Trainer!</h2>
+        <p>Scanne deine eigenen Karten mit der Kamera und kämpfe gegen den Computer.</p>
+      </div>
+      <button onclick="go('tutorial')">Tutorial starten</button>
+    </section>
+
+    <!-- Tutorial Screen -->
+    <section id="tutorial" class="screen page">
+      <div class="card">
+        <h2 id="tTitle">Schritt 1</h2>
+        <p id="tText">Tippe unten auf „Kamera“ und fotografiere deine Pokémon-Karte.</p>
+        <button onclick="nextTutorial()">Weiter</button>
+        <button class="secondary" onclick="go('home')">Überspringen</button>
+      </div>
+    </section>
+
+    <!-- Profile Screen -->
+    <section id="profile" class="screen page">
+      <h2 style="color:#a9aeb9">Profil</h2>
+      <div class="row box">
+        <div class="avatar big" id="bigAvatar"></div>
+        <div class="fields">
+          <input id="name" aria-label="Spielername" maxlength="30" placeholder="Dein Name">
+          <div class="id" id="id"></div>
+          <div id="emailDisplay" style="font-size: 11px; color: #8fdf72; margin-top: 4px;"></div>
+        </div>
+      </div>
+      <div class="box" style="flex:1">
+        <div class="tabs">
+          <button id="bildTab" onclick="tab('bild')">Bild</button>
+          <button id="rahmenTab" onclick="tab('rahmen')">Rahmen</button>
+        </div>
+        <div id="custom" class="box"></div>
+      </div>
+      <button class="save" onclick="saveProfile()" style="background:#ffcb05; color:#12141d; width:100%; font-weight:bold; padding:12px; border-radius:12px; border:none; cursor:pointer;">Speichern</button>
+      <button onclick="logout()" style="background:#ff3333; color:white; width:100%; font-weight:bold; padding:10px; border-radius:12px; border:none; cursor:pointer; margin-top: 8px;">Abmelden</button>
+      <p class="muted" id="saved" role="status" style="text-align: center; margin-top: 5px;"></p>
+    </section>
+
+    <!-- Scan Screen -->
+    <section id="scan" class="screen page">
+      <div class="card">
+        <h2>Kamera – Karte scannen</h2>
+        <video id="cam" autoplay playsinline muted></video>
+        <div class="row">
+          <button onclick="startCam()">Kamera starten</button>
+          <button onclick="scanAndAddCard()">Karte scannen & hinzufügen</button>
+        </div>
+        <img id="preview" alt="Vorschau" style="display:none; margin-top:10px; max-height:180px; object-fit:contain;">
+        <p id="scanStatus" class="small" style="color: #ffcb05; text-align: center; margin: 10px 0; font-weight: bold;"></p>
+        
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;">
+        
+        <h3>Exakte Kartensuche (Deutsch & Englisch, alle Versionen)</h3>
+        <input id="manualName" placeholder="Pokémon-Name (z.B. Glurak oder Charizard)" style="margin-bottom: 8px; width:100%; padding:10px; background:#252938; color:white; border:1px solid #595269; border-radius:8px;">
+        <div class="row">
+          <button onclick="searchExactCardOptions()">Alle Versionen finden</button>
+        </div>
+
+        <!-- Auswahlbox für gefundene Karten-Varianten -->
+        <div id="cardPickerResults" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;"></div>
+
+        <button class="secondary" onclick="stopCam(); go('deck')" style="margin-top: 20px;">Zu meinen Pokémon-Karten</button>
+      </div>
+    </section>
+
+    <!-- Deck Screen -->
+    <section id="deck" class="screen page">
+      <div class="card">
+        <h2>Pokémon-Karten</h2>
+        <div id="collection"></div>
+        <button class="secondary" onclick="go('home')">Zurück</button>
+      </div>
+    </section>
+
+    <!-- Battle Screen -->
+    <section id="battle" class="screen page">
+      <div class="card">
+        <h2>Duell gegen Computer</h2>
+        
+        <!-- Kampfarena -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #12141d; padding: 12px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #2c3145;">
+          <div id="pBox" style="text-align: center; flex: 1;">
+            <b id="pName" style="display: block; color: #ffcb05; font-size: 14px;">Trainer</b>
+            <img id="pImg" src="" style="width: 110px; height: 155px; object-fit: contain; margin: 6px 0; border-radius: 8px; background: rgba(255,255,255,0.02);" alt="Spieler Karte">
+            <div class="hpbar"><i id="pHp"></i></div>
+            <div class="small" id="pHpText"></div>
+          </div>
+          
+          <div style="font-weight: 900; font-size: 22px; color: #ff3333; margin: 0 8px;">VS</div>
+          
+          <div id="eBox" style="text-align: center; flex: 1;">
+            <b id="eName" style="display: block; color: #ff5555; font-size: 14px;">CPU</b>
+            <img id="eImg" src="" style="width: 110px; height: 155px; object-fit: contain; margin: 6px 0; border-radius: 8px; background: rgba(255,255,255,0.02);" alt="CPU Karte">
+            <div class="hpbar"><i id="eHp"></i></div>
+            <div class="small" id="eHpText"></div>
+          </div>
+        </div>
+
+        <div id="moves"></div>
+        <div class="log" id="log" style="margin-top: 10px;"></div>
+        <button class="danger" onclick="startBattle()" style="margin-top: 10px;">Neues Duell</button>
+        <button class="secondary" onclick="go('home')">Zurück</button>
+      </div>
+    </section>
+
+    <!-- Friends Screen -->
+    <section id="friends" class="screen page">
+      <h2>Freunde</h2>
+      <div class="friendSearch">
+        <input id="friendSearch" placeholder="Freund-ID eingeben">
+        <button onclick="searchFriend()">Suchen</button>
+      </div>
+      <div id="friendList"></div>
+      <button class="secondary" onclick="go('home')" style="margin-top: 15px;">Zurück</button>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <div class="bottombar">
+    <button onclick="go('deck')">
+      <span class="cardicon">
+        <span class="mini">
+          <span class="t"></span>
+          <span class="b"></span>
+        </span>
+      </span>
+      Pokémon-Karten
+    </button>
+    <button onclick="go('scan')">
+      <span class="camicon">📷</span>Kamera
+    </button>
+    <button onclick="go('friends')">
+      <span class="friendicon">🤝</span>Freunde
+    </button>
+  </div>
+
+  <input hidden type="file" id="upload" accept="image/*">
+
+  <!-- JavaScript Logic -->
+  <script>
+    const $ = id => document.getElementById(id);
+    const silhouette = '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2c0-6 16-6 16 0v2z"/></svg>';
+
+    function read(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
+    }
+    
+    let profile = read('profile', { name: 'Trainer', id: 'PSA-' + Math.random().toString(36).slice(2, 12).toUpperCase(), photo: '', frame: '#9196a6', email: '' });
+    let collection = JSON.parse(localStorage.getItem('cards') || '[]');
+    let stream = null;
+    let tStep = 0;
+    let isRegisterMode = false;
+
+    function persist(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { alert('Speichern nicht möglich.'); return false; }
+    }
+
+    persist('profile', profile);
+    $('name').value = profile.name;
+    $('id').textContent = 'ID: ' + profile.id;
+
+    function avatars() {
+      ['profileIcon', 'bigAvatar'].forEach(id => {
+        let el = $(id);
+        if (!el) return;
+        el.innerHTML = '';
+        if (profile.photo) {
+          let im = new Image();
+          im.src = profile.photo;
+          el.append(im);
+        } else {
+          el.innerHTML = silhouette;
+        }
+        el.style.borderColor = profile.frame || '#9196a6';
+      });
+    }
+    avatars();
+
+    /* --- AUTHENTICATION IMPLEMENTATION --- */
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        // Falls per E-Mail angemeldet und E-Mail nicht verifiziert ist
+        if (user.providerData.some(p => p.providerId === 'password') && !user.emailVerified) {
+          $('verifyModal').style.display = 'flex';
+          go('login');
+          return;
+        }
+
+        profile.name = user.displayName || profile.name || 'Trainer';
+        profile.email = user.email || '';
+        if (user.photoURL) profile.photo = user.photoURL;
+        profile.id = user.uid.substring(0, 10).toUpperCase();
+        persist('profile', profile);
+        
+        $('name').value = profile.name;
+        $('id').textContent = 'ID: ' + profile.id;
+        $('emailDisplay').textContent = profile.email ? '✉️ ' + profile.email : '';
+        $('welcomeHeader').textContent = 'Willkommen, ' + profile.name + '!';
+        avatars();
+
+        $('verifyModal').style.display = 'none';
+        closeEmailModal();
+        go('home');
+      } else {
+        go('login');
+      }
+    });
+
+    function loginWithGoogle() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(error => {
+        console.error("Google Auth Error:", error);
+        alert("Google Anmeldung fehlgeschlagen: " + error.message);
+      });
+    }
+
+    function openEmailModal() {
+      $('emailModal').style.display = 'flex';
+      $('authError').style.display = 'none';
+    }
+
+    function closeEmailModal() {
+      $('emailModal').style.display = 'none';
+    }
+
+    function toggleAuthMode() {
+      isRegisterMode = !isRegisterMode;
+      $('emailModalTitle').textContent = isRegisterMode ? 'Neues Konto erstellen' : 'Mit E-Mail anmelden';
+      $('emailAuthBtn').textContent = isRegisterMode ? 'Registrieren' : 'Anmelden';
+      $('toggleAuthModeBtn').textContent = isRegisterMode ? 'Bereits registriert? Anmelden' : 'Kein Konto? Jetzt registrieren';
+      $('authError').style.display = 'none';
+    }
+
+    function handleEmailAuth() {
+      const email = $('emailInput').value.trim();
+      const password = $('passwordInput').value.trim();
+      const errEl = $('authError');
+
+      if (!email || !password) {
+        errEl.textContent = "Bitte E-Mail und Passwort eingeben.";
+        errEl.style.display = 'block';
+        return;
+      }
+
+      if (isRegisterMode) {
+        // Konto neu erstellen
+        auth.createUserWithEmailAndPassword(email, password)
+          .then(userCredential => {
+            // Verifizierungs-E-Mail mit Link/Code senden
+            return userCredential.user.sendEmailVerification();
+          })
+          .then(() => {
+            closeEmailModal();
+            $('verifyModal').style.display = 'flex';
+          })
+          .catch(err => {
+            if (err.code === 'auth/email-already-in-use') {
+              errEl.textContent = "Diese E-Mail existiert bereits. Schalte auf 'Anmelden' um.";
+            } else {
+              errEl.textContent = err.message;
+            }
+            errEl.style.display = 'block';
+          });
+      } else {
+        // Anmelden versuchen
+        auth.signInWithEmailAndPassword(email, password)
+          .then(userCredential => {
+            if (!userCredential.user.emailVerified) {
+              closeEmailModal();
+              $('verifyModal').style.display = 'flex';
+            } else {
+              closeEmailModal();
+            }
+          })
+          .catch(err => {
+            // Wenn E-Mail nicht existiert, direkt zur Registrierung leiten!
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
+              errEl.textContent = "Konto mit dieser E-Mail existiert nicht. Wechsel zu Registrierung...";
+              errEl.style.display = 'block';
+              setTimeout(() => {
+                if (!isRegisterMode) toggleAuthMode();
+                errEl.textContent = "Bitte gib deine Daten ein, um dich zu registrieren.";
+              }, 1500);
+            } else {
+              errEl.textContent = "Anmeldung fehlgeschlagen: " + err.message;
+              errEl.style.display = 'block';
+            }
+          });
+      }
+    }
+
+    function checkEmailVerified() {
+      const user = auth.currentUser;
+      if (user) {
+        user.reload().then(() => {
+          if (user.emailVerified) {
+            $('verifyModal').style.display = 'none';
+            alert('E-Mail erfolgreich verifiziert! Willkommen!');
+            go('home');
+          } else {
+            $('verifyStatus').textContent = 'E-Mail wurde noch nicht verifiziert. Bitte schau in dein Postfach.';
+            $('verifyStatus').style.display = 'block';
+          }
+        });
+      }
+    }
+
+    function resendVerificationEmail() {
+      const user = auth.currentUser;
+      if (user) {
+        user.sendEmailVerification().then(() => {
+          $('verifyStatus').textContent = 'Neuer Verifizierungs-Link wurde gesendet!';
+          $('verifyStatus').style.display = 'block';
+        }).catch(e => {
+          alert('Fehler beim Senden: ' + e.message);
+        });
+      }
+    }
+
+    function closeVerifyModal() {
+      $('verifyModal').style.display = 'none';
+      logout();
+    }
+
+    function playAsGuest() {
+      go('home');
+    }
+
+    function logout() {
+      auth.signOut().then(() => {
+        profile = { name: 'Trainer Gast', id: 'PSA-' + Math.random().toString(36).slice(2, 12).toUpperCase(), photo: '', frame: '#9196a6', email: '' };
+        persist('profile', profile);
+        avatars();
+        go('login');
+      });
+    }
+
+    /* --- ROUTING & NAVIGATION --- */
+    const tut = [
+      ['Schritt 1: Kamera', 'Tippe auf „Kamera starten“ und halte deine Pokémon-Karte vor die Linse.'],
+      ['Schritt 2: Automatischer Scan', 'Tippe auf „Karte scannen & hinzufügen“ – den Rest erledigt die App.'],
+      ['Schritt 3: Pokémon-Karten', 'Deine gescannten Karten findest du direkt in deiner Sammlung.'],
+      ['Fertig!', 'Viel Spaß in der PokeScan Arena!']
+    ];
+
+    function go(id) {
+      if (stream && id !== 'scan') {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      
+      const targetScreen = $(id);
+      if (targetScreen) {
+        targetScreen.classList.add('active');
+      }
+      
+      document.body.classList.toggle('noScroll', id === 'home' || id === 'login');
+      
+      if (id === 'deck') renderCollection();
+      if (id === 'battle') startBattle();
+      if (id === 'friends') renderFriends();
+      if (id === 'profile') {
+        tab('bild');
+        $('id').textContent = 'ID: ' + profile.id;
+        $('emailDisplay').textContent = profile.email ? '✉️ ' + profile.email : '';
+      }
+    }
+
+    function nextTutorial() {
+      tStep = (tStep + 1) % tut.length;
+      $('tTitle').textContent = tut[tStep][0];
+      $('tText').textContent = tut[tStep][1];
+    }
+
+    /* --- PROFILE TABS --- */
+    function tab(which) {
+      $('bildTab').classList.toggle('selected', which === 'bild');
+      $('rahmenTab').classList.toggle('selected', which === 'rahmen');
+      let area = $('custom');
+      area.innerHTML = '';
+      
+      if (which === 'bild') {
+        let grid = document.createElement('div');
+        grid.className = 'pokemonGrid';
+        [25, 4, 7, 1, 133, 150, 94, 149, 143, 498, 501, 387, 6, 9, 3, 196].forEach(n => {
+          let b = document.createElement('button'), im = new Image();
+          im.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`;
+          im.alt = 'Pokémon-Profilbild';
+          b.append(im);
+          b.onclick = () => { profile.photo = im.src; avatars(); };
+          grid.append(b);
+        });
+        area.append(grid);
+
+        let uploadRow = document.createElement('div');
+        uploadRow.style.marginTop = '10px';
+        let b = document.createElement('button');
+        b.textContent = 'Eigenes Bild hochladen';
+        b.onclick = () => $('upload').click();
+        uploadRow.append(b);
+        area.append(uploadRow);
+      } else {
+        let choices = document.createElement('div');
+        choices.className = 'choices';
+        ['#9196a6', '#ed9fc4', '#a78bfa', '#73cef0', '#f6cd63'].forEach(c => {
+          let b = document.createElement('button');
+          b.style.border = '5px solid ' + c;
+          b.textContent = '◯';
+          b.onclick = () => { profile.frame = c; avatars(); };
+          choices.append(b);
+        });
+        area.append(choices);
+      }
+    }
+
+    function imageFile(file, done) {
+      if (!file) return;
+      let r = new FileReader();
+      r.onload = () => {
+        let im = new Image();
+        im.onload = () => {
+          let c = document.createElement('canvas'), scale = Math.min(1, 800 / im.width, 800 / im.height);
+          c.width = im.width * scale;
+          c.height = im.height * scale;
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          done(c.toDataURL('image/jpeg', .8));
+        };
+        im.src = r.result;
+      };
+      r.readAsDataURL(file);
+    }
+
+    $('upload').onchange = ev => imageFile(ev.target.files[0], data => { profile.photo = data; avatars(); });
+
+    function saveProfile() {
+      profile.name = $('name').value.trim() || 'Trainer';
+      if (persist('profile', profile)) {
+        $('saved').textContent = 'Gespeichert!';
+        setTimeout(() => go('home'), 500);
+      }
+    }
+
+    /* --- FREUNDESLISTE --- */
+    function searchFriend() {
+      let q = $('friendSearch').value.trim();
+      if (!q) return;
+      if (q === profile.id) {
+        alert('Das ist deine eigene ID.');
+        return;
+      }
+      let fs = read('friends', []);
+      if (fs.some(x => x.id === q)) {
+        alert('Dieser Freund ist bereits in deiner Liste.');
+        return;
+      }
+      fs.push({ id: q, name: 'Trainer ' + q.slice(0, 5), photo: '' });
+      persist('friends', fs);
+      renderFriends();
+      $('friendSearch').value = '';
+    }
+
+    function friendAvatar(f) {
+      let av = document.createElement('span');
+      av.className = 'friendAvatar';
+      if (f.photo) {
+        let im = new Image();
+        im.src = f.photo;
+        av.append(im);
+      } else {
+        av.textContent = (f.name || '?').charAt(0);
+      }
+      return av;
+    }
+
+    function renderFriends() {
+      let area = $('friendList');
+      area.replaceChildren();
+      let fs = read('friends', []);
+      if (!fs.length) {
+        let p = document.createElement('p');
+        p.className = 'emptyFriends';
+        p.textContent = 'Noch keine Freunde';
+        area.append(p);
+        return;
+      }
+      fs.forEach(f => {
+        let row = document.createElement('div');
+        row.className = 'friendItem';
+        let info = document.createElement('div');
+        info.className = 'friendInfo';
+        let name = document.createElement('strong');
+        name.textContent = f.nickname || f.name;
+        let id = document.createElement('small');
+        id.textContent = f.id;
+        info.append(name, id);
+        
+        let menu = document.createElement('div');
+        menu.className = 'friendMenu';
+        let dots = document.createElement('button');
+        dots.className = 'dots';
+        dots.textContent = '⋮';
+        
+        let popup = document.createElement('div');
+        popup.className = 'menuPopup';
+        popup.hidden = true;
+        
+        [['Umbenennen', () => {
+          let n = prompt('Name in deiner Freundesliste:', f.nickname || f.name);
+          if (!n || !n.trim()) return;
+          let all = read('friends', []);
+          let a = all.find(x => x.id === f.id);
+          if (a) a.nickname = n.trim();
+          persist('friends', all);
+          renderFriends();
+        }], ['Löschen', () => showDeleteFriend(f)]].forEach(([label, action]) => {
+          let b = document.createElement('button');
+          b.textContent = label;
+          b.onclick = e => { e.stopPropagation(); popup.hidden = true; action(); };
+          popup.append(b);
+        });
+        
+        dots.onclick = e => {
+          e.stopPropagation();
+          document.querySelectorAll('.menuPopup').forEach(p => { if (p !== popup) p.hidden = true; });
+          popup.hidden = !popup.hidden;
+        };
+        
+        menu.append(dots, popup);
+        row.append(friendAvatar(f), info, menu);
+        area.append(row);
+      });
+    }
+
+    function showDeleteFriend(f) {
+      document.getElementById('deleteFriendOverlay')?.remove();
+      let overlay = document.createElement('div');
+      overlay.id = 'deleteFriendOverlay';
+      overlay.className = 'deleteOverlay';
+      let card = document.createElement('div');
+      card.className = 'deleteCard';
+      
+      let name = document.createElement('strong');
+      name.textContent = f.nickname || f.name;
+      let yes = document.createElement('button');
+      yes.className = 'confirmDelete';
+      yes.textContent = 'Löschen bestätigen';
+      let cancel = document.createElement('button');
+      cancel.className = 'cancelDelete';
+      cancel.textContent = 'Abbrechen';
+      
+      function close() { overlay.remove(); }
+      
+      yes.onclick = () => {
+        if (persist('friends', read('friends', []).filter(x => x.id !== f.id))) {
+          close();
+          renderFriends();
+        }
+      };
+      cancel.onclick = close;
+      
+      card.append(friendAvatar(f), name, yes, cancel);
+      overlay.append(card);
+      document.body.append(overlay);
+    }
+
+    document.addEventListener('click', () => document.querySelectorAll('.menuPopup').forEach(p => p.hidden = true));
+
+    /* --- KAMERA & OCR SCAN --- */
+    async function startCam() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        $('cam').srcObject = stream;
+        $('scanStatus').textContent = 'Kamera aktiv. Halte die Karte hin!';
+      } catch (e) {
+        alert('Kamera nicht verfügbar.');
+      }
+    }
+
+    function stopCam() {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+    }
+
+    function cleanOcrText(text) {
+      if (!text) return [];
+      const filterWords = ['BASIC', 'STAGE', 'POKEMON', 'TRAINER', 'ENERGY', 'HP', 'TH', 'NO', 'ILLUS', 'EVOLVES', 'FROM', 'CARD', 'ATTACK', 'WEAKNESS', 'RESISTANCE', 'RETREAT', 'LENGTH', 'WEIGHT'];
+      const candidates = [];
+      const lines = text.split('\n');
+
+      for (let line of lines) {
+        let clean = line.replace(/[^a-zA-Z\s]/g, '').trim();
+        filterWords.forEach(w => {
+          const reg = new RegExp('\\b' + w + '\\b', 'gi');
+          clean = clean.replace(reg, '');
+        });
+        clean = clean.trim();
+        if (clean.length >= 3) {
+          candidates.push(clean);
+          clean.split(/\s+/).forEach(word => {
+            if (word.length >= 3 && !candidates.includes(word)) candidates.push(word);
+          });
+        }
+      }
+      return candidates;
+    }
+
+    const deToEnPokemon = {
+      "bisasam": "bulbasaur", "bisaknosp": "ivysaur", "bisaflor": "venusaur",
+      "glumanda": "charmander", "glutexo": "charmeleon", "glurak": "charizard",
+      "schiggy": "squirtle", "schillok": "wartortle", "turtok": "blastoise",
+      "pikachu": "pikachu", "raichu": "raichu", "mewtu": "mewtwo", "mew": "mew",
+      "relaxo": "snorlax", "gengar": "gengar", "evoli": "eevee", "nachtara": "umbreon"
+    };
+
+    function translateQuery(query) {
+      const lower = query.toLowerCase().trim();
+      return deToEnPokemon[lower] || query;
+    }
+
+    async function searchExactCardOptions() {
+      const rawQuery = $('manualName').value.trim();
+      if (!rawQuery) return alert('Bitte gib einen Pokémon-Namen ein.');
+
+      const translatedQuery = translateQuery(rawQuery);
+      $('scanStatus').textContent = `Suche nach allen Versionen von "${rawQuery}"...`;
+      $('cardPickerResults').innerHTML = '';
+
+      let data = null;
+      let attempts = 0;
+
+      while (attempts < 2 && (!data || !data.data || data.data.length === 0)) {
+        attempts++;
+        try {
+          const res = await fetch(`https://api.pokemontcg.io/v2/cards?q=name:"${encodeURIComponent(translatedQuery)}"&pageSize=250`);
+          data = await res.json();
+        } catch (e) {
+          console.warn(`Suchversuch ${attempts} fehlgeschlagen.`);
+        }
+      }
+
+      if (!data || !data.data || data.data.length === 0) {
+        $('scanStatus').textContent = `Keine Karten für "${rawQuery}" gefunden.`;
+        return;
+      }
+
+      $('scanStatus').textContent = `Insgesamt ${data.data.length} Karte(n) für "${rawQuery}" gefunden. Wähle deine Version aus:`;
+
+      data.data.forEach(tcgCard => {
+        const cardImg = tcgCard.images.small || tcgCard.images.large || '';
+        const setName = tcgCard.set ? tcgCard.set.name : 'Unbekanntes Set';
+        const setNum = tcgCard.number || '';
+        const hp = tcgCard.hp || '100';
+
+        const attacksList = [];
+        if (tcgCard.attacks && tcgCard.attacks.length > 0) {
+          tcgCard.attacks.forEach(atk => {
+            attacksList.push({
+              name: atk.name,
+              dmg: parseInt(atk.damage) || 30,
+              heal: (atk.text || '').toLowerCase().includes('heal') ? 20 : 0
+            });
+          });
+        } else {
+          attacksList.push({ name: 'Tackle', dmg: 30, heal: 0 });
+        }
+
+        const cardObj = {
+          id: Date.now() + Math.random(),
+          name: tcgCard.name,
+          hp: parseInt(hp),
+          type: (tcgCard.types && tcgCard.types.length) ? tcgCard.types[0] : 'Normal',
+          img: tcgCard.images.large || cardImg,
+          attacks: attacksList,
+          setInfo: `${setName} (#${setNum})`
+        };
+
+        const div = document.createElement('div');
+        div.style.cssText = 'display: flex; align-items: center; background: #12141d; padding: 10px; border-radius: 8px; border: 1px solid #2c3145; cursor: pointer;';
+        div.innerHTML = `
+          <img src="${cardImg}" style="width: 60px; height: 85px; object-fit: contain; margin-right: 12px; border-radius: 4px;" alt="${tcgCard.name}">
+          <div style="flex: 1; font-size: 13px;">
+            <b style="color: #ffcb05; font-size: 14px;">${tcgCard.name}</b><br>
+            <span>Set: ${setName} (#${setNum})</span><br>
+            <span>KP: ${hp} | Typ: ${cardObj.type}</span>
+          </div>
+          <button style="padding: 6px 12px; background: #ffcb05; color: #12141d; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">Wählen</button>
+        `;
+
+        div.onclick = () => saveCardToCollection(cardObj);
+        $('cardPickerResults').appendChild(div);
+      });
+    }
+
+    async function scanAndAddCard() {
+      const v = $('cam');
+      if (!v.videoWidth) return alert('Bitte zuerst die Kamera starten.');
+      
+      const c = document.createElement('canvas');
+      c.width = v.videoWidth;
+      c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      const dataUrl = c.toDataURL('image/jpeg', .85);
+      
+      $('preview').src = dataUrl;
+      $('preview').style.display = 'block';
+      $('scanStatus').textContent = 'Erkenne Text auf der Karte...';
+
+      try {
+        const result = await Tesseract.recognize(dataUrl, 'eng', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              $('scanStatus').textContent = `Analysiere: ${Math.floor(m.progress * 100)}%`;
+            }
+          }
+        });
+
+        const candidates = cleanOcrText(result.data.text || '');
+        if (candidates.length === 0) {
+          $('scanStatus').textContent = 'Kein Name erkannt. Gib ihn unten in der Suche ein!';
+          return;
+        }
+
+        $('manualName').value = candidates[0];
+        searchExactCardOptions();
+
+      } catch (e) {
+        console.error('Fehler beim Scannen:', e);
+        $('scanStatus').textContent = 'Fehler bei der OCR-Erkennung.';
+      }
+    }
+
+    function saveCardToCollection(cardData) {
+      collection.push(cardData);
+      localStorage.setItem('cards', JSON.stringify(collection));
+      $('scanStatus').textContent = `"${cardData.name}" erfolgreich hinzugefügt! 🎉`;
+      setTimeout(() => { stopCam(); go('deck'); }, 1000);
+    }
+
+    function deleteCard(id) {
+      collection = collection.filter(x => x.id !== id);
+      localStorage.setItem('cards', JSON.stringify(collection));
+      renderCollection();
+    }
+
+    function renderCollection() {
+      const c = $('collection');
+      c.innerHTML = collection.length ? collection.map(x => {
+        const atks = x.attacks || [{ name: 'Tackle', dmg: 30, heal: 0 }];
+        const attackText = atks.map(a => `${a.name}: ${a.dmg} DMG${a.heal ? ` (+${a.heal} KP Heal)` : ''}`).join(' | ');
+
+        return `
+          <div class="card" style="position: relative;">
+            <button onclick="deleteCard(${x.id})" style="position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; padding: 0; background: #ff3333; color: #fff; border: 2px solid #ffcb05; border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Karte löschen">×</button>
+            <b>${x.name}</b> 
+            <span class="tag">${x.type}</span>
+            <span class="tag">${x.hp} KP</span>
+            ${x.setInfo ? `<br><small style="color: #aaa;">${x.setInfo}</small>` : ''}
+            <div style="font-size: 12px; color: #ffcb05; margin-top: 4px;"><b>Angriffe:</b> ${attackText}</div>
+            ${x.img ? `<img src="${x.img}" style="margin-top: 8px; border-radius: 8px;" alt="${x.name}">` : ''}
+          </div>
+        `;
+      }).join('') : '<p class="small">Noch keine Karten. Nutze oben die Suche, um deine exakte Karte hinzuzufügen.</p>';
+    }
+
+    function log(t) {
+      $('log').innerHTML += `<div>${t}</div>`;
+      $('log').scrollTop = 99999;
+    }
+
+    /* --- KAMPF / DUELL --- */
+    let p = {}, e = {};
+
+    function startBattle() {
+      if (!collection.length) {
+        alert('Füge zuerst eine Karte hinzu.');
+        return go('scan');
+      }
+      const c = collection[Math.floor(Math.random() * collection.length)];
+      
+      const cpuList = [
+        { name: 'Glurak', type: 'Feuer', hp: 150, img: 'https://images.pokemontcg.io/base1/4.png', attacks: [{ name: 'Krallen', dmg: 30, heal: 0 }, { name: 'Flammenwurf', dmg: 50, heal: 0 }] },
+        { name: 'Turtok', type: 'Wasser', hp: 160, img: 'https://images.pokemontcg.io/base1/2.png', attacks: [{ name: 'Aquaknarre', dmg: 35, heal: 0 }, { name: 'Hydropumpe', dmg: 45, heal: 0 }] },
+        { name: 'Gengar', type: 'Psycho', hp: 130, img: 'https://images.pokemontcg.io/base1/6.png', attacks: [{ name: 'Nachtnebel', dmg: 25, heal: 15 }, { name: 'Spukball', dmg: 40, heal: 0 }] }
+      ];
+      const randomCpu = cpuList[Math.floor(Math.random() * cpuList.length)];
+
+      p = { hp: c.hp, max: c.hp, name: c.name, attacks: c.attacks || [{ name: 'Tackle', dmg: 30, heal: 0 }], img: c.img };
+      e = { hp: randomCpu.hp, max: randomCpu.hp, name: randomCpu.name, attacks: randomCpu.attacks, img: randomCpu.img };
+      
+      $('log').innerHTML = '';
+      log(`⚔️ <b>Duell gestartet!</b> ${p.name} vs. ${e.name}`);
+      
+      $('pImg').src = p.img || 'https://images.pokemontcg.io/base1/58.png';
+      $('eImg').src = e.img;
+      
+      update();
+      renderMoves();
+    }
+
+    function update() {
+      $('pName').textContent = p.name;
+      $('eName').textContent = e.name;
+      $('pHp').style.width = Math.max(0, p.hp / p.max * 100) + '%';
+      $('eHp').style.width = Math.max(0, e.hp / e.max * 100) + '%';
+      $('pHpText').textContent = `${Math.max(0, p.hp)}/${p.max} KP`;
+      $('eHpText').textContent = `${Math.max(0, e.hp)}/${e.max} KP`;
+    }
+
+    function renderMoves() {
+      $('moves').innerHTML = '';
+      p.attacks.forEach((atk, idx) => {
+        const b = document.createElement('button');
+        b.className = 'secondary';
+        let label = `💥 ${atk.name} (${atk.dmg} DMG)`;
+        if (atk.heal > 0) label += ` 💚 +${atk.heal} KP`;
+        b.textContent = label;
+        b.onclick = () => attack(idx);
+        $('moves').appendChild(b);
+      });
+    }
+
+    function attack(attackIndex) {
+      if (p.hp <= 0 || e.hp <= 0) return;
+      $('moves').innerHTML = '';
+
+      const chosenAtk = p.attacks[attackIndex];
+      let finalDmg = chosenAtk.dmg;
+      e.hp -= finalDmg;
+      log(`⚡ <b>${p.name}</b> setzt <b>${chosenAtk.name}</b> ein für <b>${finalDmg} Schaden</b>!`);
+
+      if (chosenAtk.heal > 0) {
+        p.hp = Math.min(p.max, p.hp + chosenAtk.heal);
+        log(`💚 <b>${p.name}</b> heilt sich um <b>${chosenAtk.heal} KP</b>!`);
+      }
+      
+      update();
+
+      if (e.hp <= 0) {
+        log(`🎉 <b>${e.name} wurde besiegt! Du hast gewonnen!</b>`);
+        return;
+      }
+
+      setTimeout(() => {
+        const cpuAtk = e.attacks[Math.floor(Math.random() * e.attacks.length)];
+        p.hp -= cpuAtk.dmg;
+        log(`💥 <b>${e.name}</b> kontert mit <b>${cpuAtk.name}</b> (${cpuAtk.dmg} Schaden)!`);
+        update();
+
+        if (p.hp <= 0) {
+          log(`💀 <b>${p.name} ist k.o.! CPU gewinnt.</b>`);
+        } else {
+          renderMoves();
+        }
+      }, 900);
+    }
+
+    /* --- SPLASH SCREEN ANIMATION --- */
+    let start;
+    function tick(t) {
+      if (!start) start = t;
+      let n = Math.min(100, (t - start) / 40);
+      $('fill').style.width = n + '%';
+      $('loadText').textContent = 'Lade Inhalte … ' + Math.floor(n) + ' %';
+      if (n < 100) {
+        requestAnimationFrame(tick);
+      } else {
+        setTimeout(() => {
+          $('splash').style.opacity = '0';
+          setTimeout(() => $('splash').remove(), 500);
+        }, 400);
+      }
+    }
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
